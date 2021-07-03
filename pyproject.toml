@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "quizzes"
+version = "0.0.1"
+description = "Service exposing Tusky's quiz API"
+authors = ["Snapper <LearningWithSnapper@gmail.com>"]
+license = "GNU General Public License v3"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+fastapi = "^0.65.2"
+uvicorn = "^0.14.0"
+pydantic = {extras = ["dotenv"], version = "^1.8.2"}
+SQLAlchemy = "^1.4.19"
+jsonpatch = "^1.32"
+sqlalchemy-json = "^0.4.0"
+psycopg2 = "^2.9.1"
+tusky-snowflake = {git = "https://github.com/TuskyOrg/snowflake-python-client.git"}
+tusky-users = {git = "https://github.com/TuskyOrg/identity-python-client.git", extras = ["typing"]}
+PyJWT = "^2.1.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.4"
+mypy = "^0.910"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

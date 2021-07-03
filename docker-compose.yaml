@@ -1,0 +1,55 @@
+# DEVELOPMENT compose file
+# Just run `docker compose up --build` to run the app on port 8000
+version: "3.3"
+
+services:
+#  db:
+#    build:
+#      context: "."
+#      dockerfile: "db.dockerfile"
+#    env_file:
+#      - ".env.dev"
+#    # Ports are only open for dev
+#    ports:
+#    - "5435:5432"
+#    networks:
+#      - "tuskynet"
+#    volumes:
+#      - "tusky:/var/lib/postgresql/data"
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend.Dockerfile
+    env_file:
+      - "dev.env"
+    volumes:
+    - ".:/app"
+#    links:
+#      - "db:db"
+    depends_on:
+      - "db"
+    command: "/start-reload.sh"
+    ports:
+      - "8001:80"
+    links:
+      - db
+
+  db:
+    image: postgres:13
+    volumes:
+    - app-db-data:/var/lib/postgresql/data/
+    env_file:
+      - dev.env
+
+
+
+#  frontend:
+#    build:
+#      context: "./frontend"
+
+volumes:
+  tusky:
+  app-db-data:
+
+
