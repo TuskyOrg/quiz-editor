@@ -1,5 +1,3 @@
-import tusky_users
-
 from fastapi import APIRouter, Depends, HTTPException
 from tusky_snowflake import Snowflake
 from sqlalchemy.orm import Session
