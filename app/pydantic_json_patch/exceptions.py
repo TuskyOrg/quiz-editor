@@ -13,7 +13,7 @@ __all__ = (
 from http import HTTPStatus
 
 
-class JsonPatchException:
+class JsonPatchException(Exception):
     # https://datatracker.ietf.org/doc/html/rfc5789#section-2.2
     pass
 
