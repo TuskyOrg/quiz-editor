@@ -1,4 +1,3 @@
-__all__ = ["settings", "security"]
+__all__ = ("settings",)
 
-from app.core import _security as security
 from app.core._settings import settings
