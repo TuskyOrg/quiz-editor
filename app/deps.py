@@ -25,11 +25,12 @@ async def verify_user_token(
     token: HTTPBearer = Depends(_reusable_bearer),
 ) -> schemas.TokenPayload:
     try:
+
         payload = jwt.decode(
             token.credentials,
             settings.TUSKY_IDENTITY_SERVICE_SHARED_SECRET,
             algorithms=settings.TUSKY_IDENTITY_SERVICE_ALGORITHMS,
-            audiance=settings.TUSKY_IDENTITY_SERVICE_TOKEN_AUDIENCE,
+            audience=[settings.TUSKY_IDENTITY_SERVICE_TOKEN_AUDIENCE],
         )
         token_data = schemas.TokenPayload(**payload)
     except (jwt.PyJWTError, ValidationError) as err:

@@ -26,7 +26,7 @@ class Settings(BaseSettings):
 
     TUSKY_IDENTITY_SERVICE_SHARED_SECRET: str
     TUSKY_IDENTITY_SERVICE_ALGORITHMS: List[str]
-    TUSKY_IDENTITY_SERVICE_TOKEN_AUDIENCE: Union[List[str], str]
+    TUSKY_IDENTITY_SERVICE_TOKEN_AUDIENCE: str
 
     class Config:
         case_sensitive = True
