@@ -11,7 +11,7 @@ __all__ = (
     # Base operation
     "JsonOp",
 )
-from typing import Literal, Any, Tuple, Type, TypeVar, Union
+from typing import Literal, Any, Tuple, Type, TypeVar, Union, List
 
 from pydantic import BaseModel, Field, validator
 
@@ -64,3 +64,16 @@ Op = Union[Add, Union[Remove, Union[Replace, Union[Move, Union[Copy, Test]]]]]
 
 class JsonPatchRequest(BaseModel):
     __root__: Tuple[Op, ...]
+
+    @classmethod
+    def allow_paths(cls) -> str:
+        return NotImplemented
+
+    @validator("__root__")
+    def validate_paths(cls, v):
+        for op in v:
+            # Todo: There's needless type coercion.
+            #  The .pydantic_json_patch library needs a hard look
+            if op.path not in cls.allow_paths():
+                raise ValueError("The path is not allowed")
+        return v

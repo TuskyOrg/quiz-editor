@@ -4,6 +4,7 @@ import jsonpatch
 from tusky_snowflake import Snowflake, get_snowflake
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
+from sqlalchemy.sql.expression import update
 from sqlalchemy.orm import Session
 
 from app import schemas, models
@@ -32,7 +33,7 @@ class _CRUDBase(Generic[ModelType, CreateSchemaType, PatchSchemaType]):
         return db.query(self.model).filter(self.model.id == id).one_or_none()
 
     def patch(
-        self, db: Session, *, db_obj: ModelType, obj_in: PatchSchemaType
+        self, db: Session, *, db_obj: ModelType, patch: PatchSchemaType
     ) -> ModelType:
         raise NotImplementedError
 
@@ -45,11 +46,15 @@ class _CRUDBase(Generic[ModelType, CreateSchemaType, PatchSchemaType]):
 
 class CRUDQuiz(_CRUDBase[models.Quizzes, schemas.QuizCreate, schemas.QuizPatch]):
     def patch(
-        self, db: Session, *, db_obj: ModelType, patch: PatchSchemaType
+        self, db: Session, *, id: Snowflake, patch: PatchSchemaType
     ) -> ModelType:
-        jsonpatch.apply_patch(db_obj, patch, in_place=True)
-        db.add(db_obj)
-        db.commit()
+        db_obj: models.Quizzes = db.query(self.model).filter(self.model.id == id).one_or_none()
+        ops = [op.dict() for op in patch.__root__]
+        patches = jsonpatch.apply_patch(dict(db_obj), ops, in_place=False)
+        db.execute(
+            update(models.Quizzes).where(models.Quizzes.id == db_obj.id), params=patches
+        )
+        db.flush(db_obj)
         db.refresh(db_obj)
         return db_obj
 

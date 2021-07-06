@@ -27,6 +27,15 @@ class Quizzes(Base):
     title = Column(TEXT)
     questions = relationship("Questions")
 
+    def keys(self):
+        return ["id", "owner", "title", "questions"]
+
+    def __getitem__(self, item):
+        # Todo: this code smells terrible; there has to be a better way to do this
+        return getattr(self, item)
+
+
+
 
 class Questions(Base):
     id = Column(SNOWFLAKE, primary_key=True, index=True)

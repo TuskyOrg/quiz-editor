@@ -5,6 +5,7 @@ from typing import NamedTuple, Type, Tuple, Union, Optional, Any, Dict, List
 from tusky_snowflake import Snowflake
 from pydantic import BaseModel, Field
 from .pydantic_json_patch import JsonPatchRequest
+from .pydantic_json_patch._pointer import JsonPointer
 
 from app.pydantic_json_patch.op import Op, Add, Remove, JsonOp
 
@@ -30,7 +31,7 @@ class QuestionType(enum.Enum):
 class QuestionResponse(BaseModel):
     id: Snowflake
     query: str
-    type: QuestionType
+    type: QuestionType = QuestionType.MULTIPLE_CHOICE
     answers: Optional[List[AnswerResponse]]
 
 
@@ -48,7 +49,15 @@ class QuizPatch(JsonPatchRequest):
     #
     #   class Question(BaseModel):
     #
-    pass
+    # def exclude_paths(self):
+    #     return ["owner"]
+    @classmethod
+    def allow_paths(cls):
+        return [
+            JsonPointer(__root__="/title"),
+            # JsonPointer(__root__="/questions"),
+            # JsonPointer(__root__="/questions/1")
+        ]
 
 
 class QuizResponse(BaseModel):

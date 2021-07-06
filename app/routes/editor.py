@@ -76,8 +76,9 @@ async def patch_quiz(
           "points": number
         }
     """
-    quiz = crud.quiz.get(db, id=quiz_id)
-    if not quiz:
-        raise HTTPException(status_code=404, detail="Quiz not found")
-    quiz = crud.quiz.patch(db, db_obj=quiz, patch=patch)
+    # quiz = crud.quiz.get(db, id=quiz_id)
+    # if not quiz:
+    #     raise HTTPException(status_code=404, detail="Quiz not found")
+    # print(quiz)
+    quiz = crud.quiz.patch(db, id=quiz_id, patch=patch)
     return quiz

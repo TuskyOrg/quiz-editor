@@ -31,8 +31,7 @@ services:
 #      - "db:db"
     depends_on:
       - "db"
-#    command: "/start-reload.sh"
-    command: "python manage.py runserver"
+    command: "/start-reload.sh"
     ports:
       - "8001:80"
     links:
