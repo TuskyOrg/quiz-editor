@@ -21,10 +21,6 @@ class Base:
         )
 
 
-class User(Base):
-    id = Column(SNOWFLAKE, primary_key=True, index=True)
-
-
 class Quizzes(Base):
     id = Column(SNOWFLAKE, primary_key=True, index=True)
     owner = Column(SNOWFLAKE)

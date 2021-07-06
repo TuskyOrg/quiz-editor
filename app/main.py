@@ -25,7 +25,7 @@ async def ensure_database():
             crud.quiz.get(db, id=0)
         except sqlalchemy.exc.ProgrammingError:
             logging.info("Initializing database tables")
-            init_db(db)
+            init_db()
             logging.info("Database tables initialized")
     finally:
         db.close()

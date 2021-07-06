@@ -9,7 +9,5 @@ RUN curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-
 # Copy using poetry.lock* in case it doesn't exist yet
 COPY ./pyproject.toml ./poetry.lock* /app/
 
-RUN poetry install --no-root --no-dev
-
-# I am not a fan of this naming convention, but it runs 😛
+RUN bash -c "if [ $IS_PRODUCTION == 'true' ] ; then poetry install --no-root --no-dev ; else poetry install --no-root ; fi"
 COPY ./app /app/app

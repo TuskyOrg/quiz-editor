@@ -4,7 +4,7 @@ from pydantic import BaseSettings, PostgresDsn, validator
 
 
 class Settings(BaseSettings):
-    DEBUG_MODE: bool = True
+    IS_PRODUCTION: bool = False
 
     POSTGRES_SERVER: str
     POSTGRES_USER: str

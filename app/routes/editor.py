@@ -27,7 +27,7 @@ async def get_quiz(
     *,
     db: Session = Depends(deps.get_db),
     user_token_payload: schemas.TokenPayload = Depends(deps.verify_user_token),
-    id: Snowflake
+    id: Snowflake,
 ):
     user_snowflake = user_token_payload.sub
     quiz = crud.quiz.get(db, id=id)

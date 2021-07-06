@@ -21,6 +21,8 @@ services:
     build:
       context: .
       dockerfile: backend.Dockerfile
+      args:
+        IS_PRODUCTION: "${IS_PRODUCTION-false}"
     env_file:
       - "dev.env"
     volumes:
@@ -29,7 +31,8 @@ services:
 #      - "db:db"
     depends_on:
       - "db"
-    command: "/start-reload.sh"
+#    command: "/start-reload.sh"
+    command: "python manage.py runserver"
     ports:
       - "8001:80"
     links:

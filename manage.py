@@ -17,38 +17,24 @@ def cli():
 
 @click.command()
 def initdb():
-    set_env()
-    from app.database import init_db, SessionLocal
+    from app.database import init_db
 
-    with SessionLocal() as db:
-        init_db(db)
+    init_db()
 
 
 @click.command()
 def dropdb():
-    set_env()
-    from app.database import drop_db, SessionLocal
+    from app.database import drop_db
 
-    with SessionLocal() as db:
-        drop_db(db)
+    drop_db()
 
 
 @click.command()
 def resetdb():
-    set_env()
-    from app.database import drop_db, init_db, SessionLocal
+    from app.database import drop_db, init_db
 
-    with SessionLocal() as db:
-        drop_db(db)
-        init_db(db)
-
-
-def set_env():
-    import dotenv
-
-    dotenv.load_dotenv("dev.env")
-    # os.environ.pop("POSTGRES_SERVER")
-    # os.environ.setdefault("POSTGRES_SERVER", "localhost")
+    init_db()
+    drop_db()
 
 
 @click.command()
@@ -60,17 +46,26 @@ def runserver(production, warning):
     reload = False if production else True
     if warning:
         click.echo(
-            "manage.py is currently not a production ready implementation. "
-            "A Docker image will be later provided to run the server.\n"
+            "manage.py is currently not a production ready implementation. \n"
             "The app runs in debug mode unless otherwise specified using the `--production` option."
         )
-    uvicorn.run("server:app", reload=reload)
+    uvicorn.run("app:app", reload=reload)
+
+
+@click.command()
+def test():
+    import pytest
+    from app.database import init_db, drop_db
+    drop_db()
+    init_db()
+    pytest.main()
 
 
 cli.add_command(runserver)
 cli.add_command(initdb)
 cli.add_command(dropdb)
 cli.add_command(resetdb)
+cli.add_command(test)
 
 
 if __name__ == "__main__":
