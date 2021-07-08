@@ -11,13 +11,12 @@ __all__ = (
     # Base operation
     "JsonOp",
 )
-from typing import Literal, Any, Tuple, Type, TypeVar, Union, List
+from typing import Literal, Any, Tuple, Union
 
 from pydantic import BaseModel, Field, validator
 
 # JSON Patch RFC: https://datatracker.ietf.org/doc/html/rfc6902
 from app.pydantic_json_patch._pointer import JsonPointer
-from app.pydantic_json_patch.exceptions import MalformedPatchDocument
 
 
 class JsonOp(BaseModel):

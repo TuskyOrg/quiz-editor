@@ -1,7 +1,4 @@
-from typing import TypeVar
-
-import jsonpointer
-from pydantic import BaseModel, validator, Field
+from pydantic import BaseModel, Field
 
 
 class JsonPointer(BaseModel):

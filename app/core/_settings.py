@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any, List, Union
+from typing import Optional, Dict, Any, List
 
 from pydantic import BaseSettings, PostgresDsn, validator
 

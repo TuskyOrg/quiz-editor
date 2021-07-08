@@ -1,7 +1,12 @@
-from typing import Any
+from collections.abc import MutableMapping
 
 from sqlalchemy import Column, BIGINT, TEXT, ForeignKey
-from sqlalchemy.orm import as_declarative, declared_attr, relationship
+from sqlalchemy.orm import (
+    DeclarativeMeta,
+    declared_attr,
+    relationship,
+    as_declarative,
+)
 from sqlalchemy_json import NestedMutableJson as NESTED_MUTABLE_JSON
 
 SNOWFLAKE = BIGINT
@@ -9,6 +14,7 @@ SNOWFLAKE = BIGINT
 
 @as_declarative()
 class Base:
+    __metaclass__: DeclarativeMeta
     __name__: str
 
     @declared_attr
@@ -27,14 +33,31 @@ class Quizzes(Base):
     title = Column(TEXT)
     questions = relationship("Questions")
 
-    def keys(self):
+    def _keys(self):
         return ["id", "owner", "title", "questions"]
 
     def __getitem__(self, item):
         # Todo: this code smells terrible; there has to be a better way to do this
         return getattr(self, item)
 
+    def __setitem__(self, key, value):
+        setattr(self, key, value)
 
+    def __delitem__(self, key):
+        raise NotImplementedError
+
+    def __iter__(self):
+        for k in self._keys():
+            yield k
+
+    def __len__(self):
+        return len(self._keys())
+
+    def keys(self):
+        return ["id", "owner", "title", "questions"]
+
+
+MutableMapping.register(Quizzes)
 
 
 class Questions(Base):

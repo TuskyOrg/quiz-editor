@@ -56,6 +56,7 @@ def runserver(production, warning):
 def test():
     import pytest
     from app.database import init_db, drop_db
+
     drop_db()
     init_db()
     pytest.main()

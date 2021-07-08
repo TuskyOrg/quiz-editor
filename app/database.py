@@ -1,14 +1,14 @@
-from typing import Optional, Type, Tuple
+from typing import Optional, Tuple, Any
 
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.future import create_engine, Engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.future import create_engine
+from sqlalchemy.orm import sessionmaker
 
-from app.models import Base
 from app.core import settings
+from app.models import Base
 
 
-def engine_and_Session(sqlalchemy_uri) -> Tuple[Engine, Type[Session]]:
+def engine_and_Session(sqlalchemy_uri) -> Tuple[Any, sessionmaker]:
     engine = create_engine(settings.SQLALCHEMY_URI, echo=False)
     SessionLocal = sessionmaker(engine, autoflush=False, autocommit=False)
     return engine, SessionLocal

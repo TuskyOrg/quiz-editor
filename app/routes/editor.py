@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
-from tusky_snowflake import Snowflake
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from tusky_snowflake import Snowflake
 
 from app import deps, schemas, crud
 from app.exceptions import PermissionError403
