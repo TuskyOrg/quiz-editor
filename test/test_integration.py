@@ -123,14 +123,14 @@ def test_quiz():
 
     # Add a question
     question = {
-        "query": "How much wood could a woodchuck chuck if a woodchuck could chuck wood?",
+        "query": "first added",
         "id": "",
         "answers": [
             {
                 "id": "",
-                "text": "As much wood as a woodchuck could chuck if a woodchuck could chuck wood.",
+                "text": "first answer",
             },
-            {"id": "", "text": "Not much dawg, how about you?", "points": 1},
+            {"id": "", "text": "second answer", "points": 1},
         ],
     }
     patch_request = [
@@ -158,9 +158,20 @@ def test_quiz():
         raise ValueError(
             "The answer's snowflake was mistakenly set equal to the question's snowflake"
         )
+    assert q["title"] == "New Title"
     assert q["answers"][0]["points"] == 0
-    assert q["answers"][1]["text"] == "Not much dawg, how about you?"
+    assert q["answers"][1]["text"] == "second answer"
     assert q["answers"][1]["points"] == 1
+
+    # Add a second question
+    patch_request = [
+        {
+            "op": "add",
+            "path": "/questions/1",
+            "value": question,
+        }
+    ]
+
 
 
 if __name__ == "__main__":

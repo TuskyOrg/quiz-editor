@@ -60,12 +60,9 @@ def replace_placeholders_with_snowflakes(m: MutableMapping):
 
 
 class CRUDQuiz(_CRUDBase[models.Quizzes, schemas.QuizCreate, schemas.QuizPatch]):
-    def patch(
+    async def patch(
         self, db: Session, *, id: Snowflake, patch: PatchSchemaType
     ) -> Optional[schemas.ORMModel]:
-        ops = [op.dict() for op in patch.__root__]
-        # p = jsonpatch.JsonPatch(ops)
-
         # Todo: optimize SQL
         c: CursorResult = db.execute(
             text("SELECT id, owner, title FROM quizzes WHERE id = :_id"), {"_id": id}
@@ -79,27 +76,65 @@ class CRUDQuiz(_CRUDBase[models.Quizzes, schemas.QuizCreate, schemas.QuizPatch])
             {"_id": id},
         )
         questions = [dict(q) for q in question_cursor]
-        d = {**quiz, "questions": questions}
 
-        for op in ops:
-            op: dict
-            if op["op"] not in ["add", "replace"]:
+        quiz_patches = []
+        question_patches = []
+        for operation in patch.__root__:
+            operation: dict
+            if operation["path"] == "/quiz":
+                quiz_patches.append(operation)
                 continue
-            if not isinstance(op["value"], MutableMapping):
+
+            # Todo: use `operation["path"].removeprefix("/quiz")` when upgrading to Python 3.9
+            question_patches.append(patch)
+            operation["path"] = operation["path"][5:]
+            if operation["op"] not in ["add", "replace"]:
                 continue
-            replace_placeholders_with_snowflakes(op["value"])
-        jsonpatch.apply_patch(d, ops, in_place=True)
+            if not isinstance(operation["value"], MutableMapping):
+                continue
+            replace_placeholders_with_snowflakes(operation["value"])
+
+        print("QUIZ PATCHES: ", quiz_patches)
+        print("QUESTION PATCHES", question_patches)
+        q = {**quiz}
+        for operation in quiz_patches:
+            op = operation["op"]
+            if op == "add":
+                pass
+            if op == "remove":
+                pass
+            if op == "replace":
+                pass
+            if op == "move":
+                pass
+            if op == "copy":
+                pass
+            if op == "test":
+                pass
+
+
+
+
 
         s = schemas.QuizInDB(**d)
 
-        c: CursorResult = db.execute(
+        c = db.execute(
             text(
-                "UPDATE quizzes set (title, owner) = (title, owner) where id = :id RETURNING *"
+                "UPDATE quizzes SET (title, owner) = (:title, :owner) WHERE id = :id RETURNING *"
             ),
             s.dict(),
         )
+        quiz = c.one()
+
+        c = db.execute(
+            """
+            UPDATE answers SET () 
+            """
+        )
+
+
         db.commit()
-        return s
+        return c.one_or_none()
 
 
 quiz = CRUDQuiz(models.Quizzes)

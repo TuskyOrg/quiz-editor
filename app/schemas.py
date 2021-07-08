@@ -4,8 +4,9 @@ from typing import Optional, List
 from pydantic import BaseModel
 from tusky_snowflake import Snowflake
 
-from .pydantic_json_patch import JsonPatchRequest
-from .pydantic_json_patch._pointer import JsonPointer
+# from .pydantic_json_patch import JsonPatchRequest
+# from .pydantic_json_patch._pointer import JsonPointer
+from .pydantic_json_patch import JsonPatchRequest, JsonPointer
 
 
 class ORMModel(BaseModel):
@@ -65,14 +66,7 @@ class QuizCreate(BaseModel):
 
 
 class QuizPatch(JsonPatchRequest):
-    @classmethod
-    def allow_paths(cls):
-        return [
-            JsonPointer(__root__="/title"),
-            JsonPointer(__root__="/questions"),
-            JsonPointer(__root__="/questions/0"),
-            JsonPointer(__root__="/questions/1"),
-        ]
+    pass
 
 
 class QuizResponse(ORMModel):

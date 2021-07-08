@@ -80,5 +80,5 @@ async def patch_quiz(
     # if not quiz:
     #     raise HTTPException(status_code=404, detail="Quiz not found")
     # print(quiz)
-    quiz = crud.quiz.patch(db, id=quiz_id, patch=patch)
+    quiz = await crud.quiz.patch(db, id=quiz_id, patch=patch)
     return quiz
