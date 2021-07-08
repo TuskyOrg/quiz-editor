@@ -1,13 +1,18 @@
-import enum
 from decimal import Decimal
-from typing import NamedTuple, Type, Tuple, Union, Optional, Any, Dict, List
+from typing import Optional, List
 
+from pydantic import BaseModel
 from tusky_snowflake import Snowflake
-from pydantic import BaseModel, Field
+
 from .pydantic_json_patch import JsonPatchRequest
 from .pydantic_json_patch._pointer import JsonPointer
 
-from app.pydantic_json_patch.op import Op, Add, Remove, JsonOp
+
+class ORMModel(BaseModel):
+    """Mixin for schemas representing an object in a database"""
+
+    class Config:
+        orm_mode = True
 
 
 # Design decision: Instead of each group of classes (for example, QuizCreate, QuizPatch,
@@ -16,58 +21,72 @@ from app.pydantic_json_patch.op import Op, Add, Remove, JsonOp
 
 
 #######################################################################################
+class AnswerCreate(BaseModel):
+    id: str
+    text: str
+    points: Decimal = Decimal(0)
+
+
 class AnswerResponse(BaseModel):
     id: Snowflake
     text: str
     points: Decimal = Decimal(0)
 
 
-class QuestionType(enum.Enum):
-    # SHORT_ANSWER = ...
-    # ESSAY = ...
-    MULTIPLE_CHOICE = "multiple choice"
+class AnswerInDB(ORMModel):
+    id: Snowflake
+    text: str
+    points: Decimal = Decimal(0)
+
+
+############################################
+class QuestionCreate(BaseModel):
+    id: str
+    query: str
+    answers: Optional[List[AnswerCreate]]
 
 
 class QuestionResponse(BaseModel):
     id: Snowflake
     query: str
-    type: QuestionType = QuestionType.MULTIPLE_CHOICE
     answers: Optional[List[AnswerResponse]]
 
 
+class QuestionInDB(ORMModel):
+    id: Snowflake
+    query: str
+    answers: Optional[List[AnswerInDB]]
+
+
+############################################
 class QuizCreate(BaseModel):
     owner: Snowflake
     title: str
 
 
 class QuizPatch(JsonPatchRequest):
-    # Schema:
-    #
-    #   title: str
-    #   owner: Snowflake
-    #   questions: List[Question]
-    #
-    #   class Question(BaseModel):
-    #
-    # def exclude_paths(self):
-    #     return ["owner"]
     @classmethod
     def allow_paths(cls):
         return [
             JsonPointer(__root__="/title"),
-            # JsonPointer(__root__="/questions"),
-            # JsonPointer(__root__="/questions/1")
+            JsonPointer(__root__="/questions"),
+            JsonPointer(__root__="/questions/0"),
+            JsonPointer(__root__="/questions/1"),
         ]
 
 
-class QuizResponse(BaseModel):
+class QuizResponse(ORMModel):
     id: Snowflake  # Immutable
     title: str
     owner: Snowflake
     questions: List[QuestionResponse]
 
-    class Config:
-        orm_mode = True
+
+class QuizInDB(ORMModel):
+    id: Snowflake  # Immutable
+    title: str
+    owner: Snowflake
+    questions: List[QuestionResponse] = []
 
 
 #######################################################################################

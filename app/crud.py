@@ -1,11 +1,13 @@
+from collections import MutableMapping
 from typing import TypeVar, Generic, Type, Optional
 
 import jsonpatch
-from tusky_snowflake import Snowflake, get_snowflake
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
-from sqlalchemy.sql.expression import update
+from sqlalchemy.engine.cursor import CursorResult
 from sqlalchemy.orm import Session
+from sqlalchemy.sql.expression import text
+from tusky_snowflake import Snowflake, get_snowflake, synchronous_get_snowflake
 
 from app import schemas, models
 from app.models import Base
@@ -44,19 +46,60 @@ class _CRUDBase(Generic[ModelType, CreateSchemaType, PatchSchemaType]):
         return obj
 
 
+def replace_placeholders_with_snowflakes(m: MutableMapping):
+    for k, v in m.items():
+        if isinstance(k, MutableMapping):
+            replace_placeholders_with_snowflakes(m)
+        if isinstance(v, list):
+            for item in v:
+                replace_placeholders_with_snowflakes(item)
+        if k == "id":
+            # Todo: worry about async (and not fetching useless snowflakes)
+            snowflake = synchronous_get_snowflake()
+            m["id"] = snowflake
+
+
 class CRUDQuiz(_CRUDBase[models.Quizzes, schemas.QuizCreate, schemas.QuizPatch]):
     def patch(
         self, db: Session, *, id: Snowflake, patch: PatchSchemaType
-    ) -> ModelType:
-        db_obj: models.Quizzes = db.query(self.model).filter(self.model.id == id).one_or_none()
+    ) -> Optional[schemas.ORMModel]:
         ops = [op.dict() for op in patch.__root__]
-        patches = jsonpatch.apply_patch(dict(db_obj), ops, in_place=False)
-        db.execute(
-            update(models.Quizzes).where(models.Quizzes.id == db_obj.id), params=patches
+        # p = jsonpatch.JsonPatch(ops)
+
+        # Todo: optimize SQL
+        c: CursorResult = db.execute(
+            text("SELECT id, owner, title FROM quizzes WHERE id = :_id"), {"_id": id}
         )
-        db.flush(db_obj)
-        db.refresh(db_obj)
-        return db_obj
+        quiz: models.Quizzes = c.one_or_none()
+        if quiz is None:
+            return None
+
+        question_cursor = db.execute(
+            "SELECT (id, quiz_id, query, answers) from questions WHERE questions.quiz_id = :_id",
+            {"_id": id},
+        )
+        questions = [dict(q) for q in question_cursor]
+        d = {**quiz, "questions": questions}
+
+        for op in ops:
+            op: dict
+            if op["op"] not in ["add", "replace"]:
+                continue
+            if not isinstance(op["value"], MutableMapping):
+                continue
+            replace_placeholders_with_snowflakes(op["value"])
+        jsonpatch.apply_patch(d, ops, in_place=True)
+
+        s = schemas.QuizInDB(**d)
+
+        c: CursorResult = db.execute(
+            text(
+                "UPDATE quizzes set (title, owner) = (title, owner) where id = :id RETURNING *"
+            ),
+            s.dict(),
+        )
+        db.commit()
+        return s
 
 
 quiz = CRUDQuiz(models.Quizzes)

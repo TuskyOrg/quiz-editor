@@ -1,8 +1,6 @@
 # Another case of poor testing 🙁
 # Oh well, at least there's something
-import token
 
-import pytest
 import httpx
 import tusky_users
 from httpx import HTTPStatusError
@@ -117,22 +115,52 @@ def test_quiz():
     )
     try:
         r.raise_for_status()
-        raise ValueError("Oh no! A user gave another user a quiz without their permission!")
+        raise ValueError(
+            "Oh no! A user gave another user a quiz without their permission!"
+        )
     except HTTPStatusError:
         pass
 
     # Add a question
-    patch_request = [{"op": "add", "path": "/questions/1", "value": {"query": "How much wood could a woodchuck chuck if a woodchuck could chuck wood?"}}]
+    question = {
+        "query": "How much wood could a woodchuck chuck if a woodchuck could chuck wood?",
+        "id": "",
+        "answers": [
+            {
+                "id": "",
+                "text": "As much wood as a woodchuck could chuck if a woodchuck could chuck wood.",
+            },
+            {"id": "", "text": "Not much dawg, how about you?", "points": 1},
+        ],
+    }
+    patch_request = [
+        {
+            "op": "add",
+            "path": "/questions/0",
+            "value": question,
+        }
+    ]
     r = httpx.patch(
         f"http://localhost:8001/editor/quiz/{quiz_get['id']}",
         json=patch_request,
         headers=u1_auth,
     )
-    print(r.content)
     r.raise_for_status()
+    q = r.json()["questions"][0]
     print(r.json())
-
-
+    if q["query"] != question["query"]:
+        raise ValueError("Adding a question did not work properly")
+    if q["id"] == "":
+        raise ValueError("The question id was not properly set")
+    if q["answers"][0]["id"] == "":
+        raise ValueError("The answer's id was not properly set")
+    if q["answers"][0]["id"] == q["id"]:
+        raise ValueError(
+            "The answer's snowflake was mistakenly set equal to the question's snowflake"
+        )
+    assert q["answers"][0]["points"] == 0
+    assert q["answers"][1]["text"] == "Not much dawg, how about you?"
+    assert q["answers"][1]["points"] == 1
 
 
 if __name__ == "__main__":
