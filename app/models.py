@@ -1,4 +1,6 @@
-from collections.abc import MutableMapping
+# Notice on modifying models:
+#   Many models are accessed using raw sql.
+#   Remember to also modify their CRUD operation after adding or deleting fields.
 
 from sqlalchemy import Column, BIGINT, TEXT, ForeignKey
 from sqlalchemy.orm import (
@@ -32,32 +34,6 @@ class Quizzes(Base):
     owner = Column(SNOWFLAKE)
     title = Column(TEXT)
     questions = relationship("Questions")
-
-    def _keys(self):
-        return ["id", "owner", "title", "questions"]
-
-    def __getitem__(self, item):
-        # Todo: this code smells terrible; there has to be a better way to do this
-        return getattr(self, item)
-
-    def __setitem__(self, key, value):
-        setattr(self, key, value)
-
-    def __delitem__(self, key):
-        raise NotImplementedError
-
-    def __iter__(self):
-        for k in self._keys():
-            yield k
-
-    def __len__(self):
-        return len(self._keys())
-
-    def keys(self):
-        return ["id", "owner", "title", "questions"]
-
-
-MutableMapping.register(Quizzes)
 
 
 class Questions(Base):
