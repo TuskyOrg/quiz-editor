@@ -1,43 +1,61 @@
-# Notice on modifying models:
-#   Many models are accessed using raw sql.
-#   Remember to also modify their CRUD operation after adding or deleting fields.
+# MongoDB cares little for the differences between models and schemas 😛
+from decimal import Decimal
+from numbers import Number
+from typing import Optional, List
 
-from sqlalchemy import Column, BIGINT, TEXT, ForeignKey
-from sqlalchemy.orm import (
-    DeclarativeMeta,
-    declared_attr,
-    relationship,
-    as_declarative,
-)
-from sqlalchemy_json import NestedMutableJson as NESTED_MUTABLE_JSON
+from pydantic import BaseModel, Field
 
-SNOWFLAKE = BIGINT
+import tusky_snowflake
 
 
-@as_declarative()
-class Base:
-    __metaclass__: DeclarativeMeta
-    __name__: str
+class _Model(BaseModel):
+    # Todo: make async
+    id: tusky_snowflake.Snowflake = Field(
+        default_factory=tusky_snowflake.synchronous_get_snowflake,
+        alias="_id",
+    )
 
-    @declared_attr
-    def __tablename__(cls) -> str:
-        """Generate __tablename__ automatically"""
-        n = cls.__name__
-        # ExampleTable -> example_table
-        return n[0].lower() + "".join(
-            "_" + x.lower() if x.isupper() else x for x in n[1:]
-        )
+    class Config:
+        allow_population_by_field_name = True
 
 
-class Quizzes(Base):
-    id = Column(SNOWFLAKE, primary_key=True, index=True)
-    owner = Column(SNOWFLAKE)
-    title = Column(TEXT)
-    questions = relationship("Questions")
+class AnswerModel(_Model):
+    text: str
+    points: float = Field(0)
 
 
-class Questions(Base):
-    id = Column(SNOWFLAKE, primary_key=True, index=True)
-    quiz_id = Column(SNOWFLAKE, ForeignKey("quizzes.id"))
-    query = Column(TEXT)
-    answers = Column(NESTED_MUTABLE_JSON, nullable=True)
+class QuestionModel(_Model):
+    query: str
+    answers: List[AnswerModel] = []
+
+
+class QuizModel(_Model):
+    title: str
+    owner: tusky_snowflake.Snowflake
+    questions: List[QuestionModel] = []
+
+
+# class _Response(BaseModel):
+#     _id: int = Field(..., alias="id")
+#
+#
+# class AnswerResponse(_Response):
+#     text: str
+#     points: Optional[Decimal]
+#
+#
+# class QuestionResponse(_Response):
+#     query: str
+#     answers: List[AnswerResponse] = []
+#
+#
+# class QuizResponse(_Response):
+#     title: str
+#     owner: tusky_snowflake.Snowflake
+#     questions: List[QuestionResponse] = []
+
+
+#######################################################################################
+class TokenPayload(BaseModel):
+    sub: Optional[tusky_snowflake.Snowflake] = None  # subject
+    # aud: Optional[List[str]]

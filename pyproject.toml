@@ -10,12 +10,11 @@ python = "^3.8"
 fastapi = "^0.66.0"
 uvicorn = "^0.14.0"
 pydantic = {extras = ["dotenv"], version = "^1.8.2"}
-SQLAlchemy = "^1.4.19"
 jsonpatch = "^1.32"
-sqlalchemy-json = "^0.4.0"
-psycopg2 = "^2.9.1"
 tusky-snowflake = {git = "https://github.com/TuskyOrg/snowflake-python-client.git"}
 PyJWT = "^2.1.0"
+motor = "^2.4.0"
+dnspython = "^2.1.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.4"

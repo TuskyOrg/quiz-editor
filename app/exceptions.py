@@ -20,3 +20,10 @@ class PermissionError403(TuskyHTTPException):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have permission to perform the action",
         )
+
+
+class NotFoundError404(TuskyHTTPException):
+    def __init__(self):
+        super(NotFoundError404, self).__init__(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Not found"
+        )

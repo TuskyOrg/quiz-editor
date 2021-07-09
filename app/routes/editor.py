@@ -1,84 +1,63 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-from tusky_snowflake import Snowflake
+from typing import Dict, List, Any
 
-from app import deps, schemas, crud
-from app.exceptions import PermissionError403
+from fastapi import APIRouter, Body, Depends, Request, status
+from fastapi.responses import JSONResponse
+
+from app import crud, deps
+from app.models import QuizModel, TokenPayload
+from app.exceptions import PermissionError403, NotFoundError404
+
+SNOWFLAKE = int
 
 router = APIRouter()
 
 
-@router.post("/quiz", response_model=schemas.QuizResponse)
+@router.post("/quiz")
 async def create_quiz(
-    *,
-    db: Session = Depends(deps.get_db),
-    user_token_payload: schemas.TokenPayload = Depends(deps.verify_user_token),
-    obj_in: schemas.QuizCreate,
+    obj_in: QuizModel,
+    db=Depends(deps.get_db),
+    user_token_payload: TokenPayload = Depends(deps.verify_user_token),
 ):
     user_snowflake = user_token_payload.sub
-    if obj_in.owner is not None and obj_in.owner != user_snowflake:
+    if obj_in.owner != user_snowflake:
         raise PermissionError403
     quiz = await crud.quiz.create(db, obj_in=obj_in)
-    return quiz
+    if quiz is None:
+        raise NotFoundError404
+    return JSONResponse(status_code=status.HTTP_201_CREATED, content=quiz)
 
 
-@router.get("/quiz", response_model=schemas.QuizResponse)
+@router.get("/quiz", response_model=QuizModel)
 async def get_quiz(
-    *,
-    db: Session = Depends(deps.get_db),
-    user_token_payload: schemas.TokenPayload = Depends(deps.verify_user_token),
-    id: Snowflake,
+    id: SNOWFLAKE,
+    db=Depends(deps.get_db),
+    user_token_payload: TokenPayload = Depends(deps.verify_user_token),
 ):
+    print("ENTERING THE GET ROUTE")
     user_snowflake = user_token_payload.sub
-    quiz = crud.quiz.get(db, id=id)
-    if quiz.owner != user_snowflake:
+    quiz = await crud.quiz.get(db, id_=id)
+    if quiz is None:
+        raise NotFoundError404
+    if user_snowflake != quiz["owner"]:
         raise PermissionError403
-    return quiz
+    return QuizModel(**quiz)
 
 
-@router.patch("/quiz/{quiz_id}", response_model=schemas.QuizResponse)
+@router.patch("/quiz/{id}")
 async def patch_quiz(
-    *,
-    db: Session = Depends(deps.get_db),
-    user_token_payload: schemas.TokenPayload = Depends(deps.verify_user_token),
-    quiz_id: Snowflake,
-    patch: schemas.QuizPatch,
+    id: SNOWFLAKE,
+    json_patch_request: Any = Body(...),
+    db=Depends(deps.get_db),
+    user_token_payload: TokenPayload = Depends(deps.verify_user_token),
 ):
-    """
-    Use [RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902/) JSON Patch operations to modify the quizzes properties.
-
-    ## Quiz schema (in pseudo-code)
-    <!-- Actual JSON Schema (http://json-schema.org/draft-04/schema#) is difficult for humans to parse-->
-
-    ### Quiz (root):
-
-        {
-          "id": Snowflake,
-          "title": str,
-          "owner": Snowflake,
-          "questions": List[Question]
-        }
-
-    ### Question:
-
-        {
-          "id": Snowflake,
-          "query": str,
-          "type": QuestionType,
-          "answers": List[Answer]
-        }
-
-    ### Answer:
-
-        {
-          "id": Snowflake,
-          "text": str,
-          "points": number
-        }
-    """
-    # quiz = crud.quiz.get(db, id=quiz_id)
-    # if not quiz:
-    #     raise HTTPException(status_code=404, detail="Quiz not found")
-    # print(quiz)
-    quiz = await crud.quiz.patch(db, id=quiz_id, patch=patch)
-    return quiz
+    # I have had a lot of trouble trying to type these patch requests that I decided to do it manually
+    if not isinstance(json_patch_request, list):
+        raise ValueError("A jsonpatch request must be a list")
+    print("JSON_PATCH_REQUEST:\t", json_patch_request)
+    user_snowflake = user_token_payload.sub
+    quiz = await crud.quiz.get(db, id_=id)
+    if quiz is None:
+        raise NotFoundError404
+    if user_snowflake != quiz["owner"]:
+        raise PermissionError403
+    return await crud.quiz.patch(db, id_=id, json_patch_request=json_patch_request)

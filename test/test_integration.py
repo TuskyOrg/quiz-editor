@@ -1,5 +1,7 @@
 # Another case of poor testing 🙁
 # Oh well, at least there's something
+# fmt: off
+import json
 
 import httpx
 import tusky_users
@@ -30,7 +32,7 @@ u2, u2_auth = get_user("u2")
 
 
 def test_quiz():
-
+    ####################################################################################
     # Assert creating a quiz
     r = httpx.post(
         "http://localhost:8001/editor/quiz",
@@ -40,7 +42,9 @@ def test_quiz():
     r.raise_for_status()
     quiz_post = r.json()
     assert quiz_post["title"] == "Test Quiz"
+    print(f"posted quiz:\t{r.json()}")
 
+    ####################################################################################
     # Assert you can't post a quiz in someone else's name
     r = httpx.post(
         "http://localhost:8001/editor/quiz",
@@ -67,37 +71,53 @@ def test_quiz():
     except HTTPStatusError:
         pass
 
+    ####################################################################################
     # Assert getting said quiz
     r = httpx.get(
         f"http://localhost:8001/editor/quiz/",
-        params={"id": quiz_post["id"]},
+        params={"id": quiz_post["_id"]},
         headers=u1_auth,
     )
     r.raise_for_status()
     quiz_get = r.json()
     assert quiz_post == quiz_get
 
+    ####################################################################################
     # Assert modifying quiz
     patch_request = [
         # Change the quiz's title
         {"op": "replace", "path": "/title", "value": "New Title"}
     ]
-    r = httpx.patch(
-        f"http://localhost:8001/editor/quiz/{quiz_get['id']}",
-        json=patch_request,
+    r_patch = httpx.patch(
+        f"http://localhost:8001/editor/quiz/{quiz_get['_id']}",
+        content=json.dumps(patch_request),
         headers=u1_auth,
     )
-    r.raise_for_status()
-    assert r.json()["title"] == "New Title"
-    assert r.json()["questions"] == []
+    print("Request content:\t", r_patch.request.content)
+    r_patch.raise_for_status()
+    assert r_patch.json()["title"] == "New Title"
+    assert r_patch.json()["questions"] == []
 
+    ####################################################################################
+    # Assert the quiz was ACTUALLY modified
+    r_get = httpx.get(
+        f"http://localhost:8001/editor/quiz/",
+        params={"id": quiz_post["_id"]},
+        headers=u1_auth,
+    )
+    r_get.raise_for_status()
+    assert (
+        r_patch.json() == r_get.json()
+    ), f"\nORIGINAL _ID:\t{quiz_get['_id']}\nPATCHED JSON:\t{r_patch.json()}\nGOTTEN JSON:\t{r_get.json()}"
+
+    ####################################################################################
     # Assert you can't modify the snowflake
     patch_request = [
         # Change the quiz's title
         {"op": "replace", "path": "/id", "value": u2.id + 1}
     ]
     r = httpx.patch(
-        f"http://localhost:8001/editor/quiz/{quiz_get['id']}",
+        f"http://localhost:8001/editor/quiz/{quiz_get['_id']}",
         json=patch_request,
         headers=u1_auth,
     )
@@ -106,11 +126,13 @@ def test_quiz():
         raise ValueError("Oh no! A user modified a snowflake!")
     except HTTPStatusError:
         pass
+
+    ####################################################################################
     # Assert you can't give the quiz to someone else (this will be changed later, hopefully)
-    patch_request = [{"op": "replace", "path": "/owner", "value": u2.id}]
+    patch_change_owner = [{"op": "replace", "path": "/owner", "value": u2.id}]
     r = httpx.patch(
-        f"http://localhost:8001/editor/quiz/{quiz_get['id']}",
-        json=patch_request,
+        f"http://localhost:8001/editor/quiz/{quiz_get['_id']}",
+        json=patch_change_owner,
         headers=u1_auth,
     )
     try:
@@ -121,58 +143,74 @@ def test_quiz():
     except HTTPStatusError:
         pass
 
-    # Add a question
-    question = {
-        "query": "first added",
-        "id": "",
-        "answers": [
-            {
-                "id": "",
-                "text": "first answer",
-            },
-            {"id": "", "text": "second answer", "points": 1},
-        ],
+    ####################################################################################
+    # ASSERT PATCH MUST BE LIST
+    question = {"query": "q1", "answers": [{"text": "q1a1"}, {"text": "q1a2", "points": 1}]}
+
+
+    patch_request = {
+        "op": "add",
+        "path": "/questions/0",
+        "value": question,
     }
-    patch_request = [
-        {
-            "op": "add",
-            "path": "/questions/0",
-            "value": question,
-        }
-    ]
+
     r = httpx.patch(
-        f"http://localhost:8001/editor/quiz/{quiz_get['id']}",
-        json=patch_request,
+        f"http://localhost:8001/editor/quiz/{quiz_get['_id']}",
+        content=json.dumps(patch_request),
+        headers=u1_auth,
+    )
+    try:
+        r.raise_for_status()
+        raise ValueError("The server let a bad request through")
+    except HTTPStatusError:
+        pass
+
+    ####################################################################################
+    # Add a question
+    patch_request = [{
+        "op": "add",
+        "path": "/questions/0",
+        "value": question,
+    }]
+    r = httpx.patch(
+        f"http://localhost:8001/editor/quiz/{quiz_get['_id']}",
+        content=json.dumps(patch_request),
         headers=u1_auth,
     )
     r.raise_for_status()
+
     q = r.json()["questions"][0]
     print(r.json())
-    if q["query"] != question["query"]:
-        raise ValueError("Adding a question did not work properly")
-    if q["id"] == "":
-        raise ValueError("The question id was not properly set")
-    if q["answers"][0]["id"] == "":
-        raise ValueError("The answer's id was not properly set")
-    if q["answers"][0]["id"] == q["id"]:
+    assert q["query"] == "q1", f"Adding a question did not work properly\n{q}"
+    if "id" in q:
+        raise ValueError("The question id was not reset")
+    if "id" in q["answers"][0]:
+        raise ValueError("The answer's id was reset")
+    if len({q["_id"], q["answers"][0]["_id"], q["answers"][1]["_id"]}) != 3:
         raise ValueError(
             "The answer's snowflake was mistakenly set equal to the question's snowflake"
         )
-    assert q["title"] == "New Title"
-    assert q["answers"][0]["points"] == 0
-    assert q["answers"][1]["text"] == "second answer"
-    assert q["answers"][1]["points"] == 1
+    assert r.json()["title"] == "New Title"
+    assert r.json()["questions"][0]["answers"][0]["points"] == 0
+    assert r.json()["questions"][0]["answers"][1]["text"] == "q1a2"
+    assert r.json()["questions"][0]["answers"][1]["points"] == 1
 
-    # Add a second question
+    ####################################################################################
+    # Add more questions
+    q2 = {"query": "q2", "answers": [{"text": "q2a1"}, {"text": "q2a2", "points": 1}]}
+    q3 = {"query": "q3", "answers": [{"text": "q3a1"}, {"text": "q3a2", "points": 1}]}
+    q4 = {"query": "q4", "answers": [{"text": "q4a1"}, {"text": "q4a2", "points": 1}]}
+
     patch_request = [
-        {
-            "op": "add",
-            "path": "/questions/1",
-            "value": question,
-        }
+        {"op": "add", "path": "/questions/-", "value": q2},
+        {"op": "add", "path": "/questions/-", "value": q3},
+        {"op": "add", "path": "/questions/-", "value": q4},
     ]
-
+    r = httpx.patch(f"http://localhost:8001/editor/quiz/{quiz_get['_id']}", json=patch_request, headers=u1_auth,)
+    r.raise_for_status()
+    print(r.json())
 
 
 if __name__ == "__main__":
     test_quiz()
+# fmt: on

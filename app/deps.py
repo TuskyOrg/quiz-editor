@@ -1,29 +1,19 @@
-from typing import Generator
-
 import jwt
 from fastapi import Depends
 from fastapi.security import HTTPBearer
+from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import ValidationError
 
-from app import schemas
+from app import database, models
 from app.core import settings
-from app.database import SessionLocal
 from app.exceptions import InvalidCredentials400
 
 _reusable_bearer = HTTPBearer(bearerFormat="jwt")
 
 
-def get_db() -> Generator:
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
 async def verify_user_token(
     token: HTTPBearer = Depends(_reusable_bearer),
-) -> schemas.TokenPayload:
+) -> models.TokenPayload:
     try:
 
         payload = jwt.decode(
@@ -32,7 +22,7 @@ async def verify_user_token(
             algorithms=settings.TUSKY_IDENTITY_SERVICE_ALGORITHMS,
             audience=[settings.TUSKY_IDENTITY_SERVICE_TOKEN_AUDIENCE],
         )
-        token_data = schemas.TokenPayload(**payload)
+        token_data = models.TokenPayload(**payload)
     except (jwt.PyJWTError, ValidationError) as err:
         raise InvalidCredentials400 from err
     # At the time of writing,
@@ -42,5 +32,5 @@ async def verify_user_token(
     return token_data
 
 
-# def get_current_active_superuser():
-#     pass
+async def get_db() -> AsyncIOMotorClient:
+    return database.db.client

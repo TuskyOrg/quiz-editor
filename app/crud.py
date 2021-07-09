@@ -1,140 +1,99 @@
-from collections import MutableMapping
-from typing import TypeVar, Generic, Type, Optional
+from typing import (
+    TypeVar,
+    Generic,
+    Type,
+    Optional,
+    Dict,
+    List,
+    Any,
+    Union,
+    MutableMapping,
+    MutableSequence,
+)
 
 import jsonpatch
+from motor.motor_asyncio import AsyncIOMotorClient
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
-from sqlalchemy.engine.cursor import CursorResult
-from sqlalchemy.orm import Session
-from sqlalchemy.sql.expression import text
-from tusky_snowflake import Snowflake, get_snowflake, synchronous_get_snowflake
+from pymongo import ReturnDocument
 
-from app import schemas, models
-from app.models import Base
+from app.models import QuizModel
 
-ModelType = TypeVar("ModelType", bound=Base)
-CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
-PatchSchemaType = TypeVar("PatchSchemaType", bound=BaseModel)
+SNOWFLAKE = int
+
+ModelType = TypeVar("ModelType", bound=BaseModel)
+PatchType = TypeVar("PatchType", bound=BaseModel)
 
 
-class _CRUDBase(Generic[ModelType, CreateSchemaType, PatchSchemaType]):
-    def __init__(self, model: Type[ModelType]):
+class _CRUDBase(Generic[ModelType]):
+    def __init__(self, collection: str, model: Type[ModelType]):
+        self.collection = collection
         self.model = model
 
-    async def create(self, db: Session, *, obj_in: CreateSchemaType) -> ModelType:
+    async def create(self, db: AsyncIOMotorClient, *, obj_in: ModelType) -> Dict:
         obj_in_data = jsonable_encoder(obj_in)
-        db_obj = self.model(**obj_in_data)
-        snowflake = await get_snowflake()
-        db_obj.id = snowflake
-        db.add(db_obj)
-        db.commit()
-        db.refresh(db_obj)
-        return db_obj
+        new_obj = await db[self.collection].insert_one(obj_in_data)
+        return await db[self.collection].find_one({"_id": new_obj.inserted_id})
 
-    def get(self, db: Session, *, id: Snowflake) -> Optional[ModelType]:
-        return db.query(self.model).filter(self.model.id == id).one_or_none()
+    async def get(self, db: AsyncIOMotorClient, *, id_: SNOWFLAKE) -> Optional[Dict]:
+        return await db[self.collection].find_one({"_id": id_})
 
-    def patch(
-        self, db: Session, *, db_obj: ModelType, patch: PatchSchemaType
-    ) -> ModelType:
+    async def patch(self, db: AsyncIOMotorClient, *, id_: SNOWFLAKE, patch_in):
         raise NotImplementedError
 
-    def delete(self, db: Session, *, id: Snowflake) -> ModelType:
-        obj = db.query(self.model).get(id)
-        db.delete(obj)
-        db.commit()
-        return obj
+    async def delete(self, db: AsyncIOMotorClient, *, id_: SNOWFLAKE) -> bool:
+        delete_result = await db[self.collection].delete_one({"_id": id_})
+        if delete_result.deleted_count == 1:
+            return True
+        return False  # Not found
 
 
-def replace_placeholders_with_snowflakes(m: MutableMapping):
-    for k, v in m.items():
-        if isinstance(k, MutableMapping):
-            replace_placeholders_with_snowflakes(m)
-        if isinstance(v, list):
-            for item in v:
-                replace_placeholders_with_snowflakes(item)
-        if k == "id":
-            # Todo: worry about async (and not fetching useless snowflakes)
-            snowflake = synchronous_get_snowflake()
-            m["id"] = snowflake
+def _replace_ids_with_oids(x: Union[MutableSequence, MutableMapping]):
+    if isinstance(x, MutableMapping):
+        for k, v in x.items():
+            if isinstance(v, MutableSequence) or isinstance(v, MutableMapping):
+                _replace_ids_with_oids(v)
+    elif isinstance(x, MutableSequence):
+        for v in x:
+            if isinstance(v, MutableSequence) or isinstance(v, MutableMapping):
+                _replace_ids_with_oids(v)
 
 
-class CRUDQuiz(_CRUDBase[models.Quizzes, schemas.QuizCreate, schemas.QuizPatch]):
-    async def patch(
-        self, db: Session, *, id: Snowflake, patch: PatchSchemaType
-    ) -> Optional[schemas.ORMModel]:
-        # Todo: optimize SQL
-        c: CursorResult = db.execute(
-            text("SELECT id, owner, title FROM quizzes WHERE id = :_id"), {"_id": id}
-        )
-        quiz: models.Quizzes = c.one_or_none()
-        if quiz is None:
-            return None
+class CRUDQuiz(_CRUDBase[QuizModel]):
+    async def patch(self, db, *, id_: SNOWFLAKE, json_patch_request):
+        # Todo: this whole process smells
+        orig_quiz = await db[self.collection].find_one({"_id": id_})
+        print("ORIG_QUIZ:\t", orig_quiz)
+        # Some fields are not allowed to be changed; make sure that they aren't accessed
+        patches = jsonpatch.JsonPatch(json_patch_request)
+        for p in patches:
+            print("PATCHES:\t", patches)
+            print("PATCH:\t", p)
+            pointer = jsonpatch.JsonPointer(p["path"])
 
-        question_cursor = db.execute(
-            "SELECT (id, quiz_id, query, answers) from questions WHERE questions.quiz_id = :_id",
-            {"_id": id},
-        )
-        questions = [dict(q) for q in question_cursor]
+            if pointer.path == "/":
+                # We do not allow empty strings as keys
+                raise ValueError
+            if "owner" in pointer.path:
+                raise ValueError
+            if "_id" in pointer.path:
+                raise ValueError
+            if "id" in pointer.path:
+                raise ValueError
 
-        quiz_patches = []
-        question_patches = []
-        for operation in patch.__root__:
-            operation: dict
-            if operation["path"] == "/quiz":
-                quiz_patches.append(operation)
-                continue
+        print("PREPATCHED QUIZ:\t", orig_quiz)
+        patched_quiz = patches.apply(orig_quiz, in_place=False)
+        # Replace any "ids" with "_ids" (Snowflakes)
+        print("PATCHED QUIZ:\t", patched_quiz)
+        quiz_model = QuizModel(**patched_quiz)
+        new_quiz = quiz_model.dict(by_alias=True)
+        print("NEW QUIZ:\t", new_quiz)
 
-            # Todo: use `operation["path"].removeprefix("/quiz")` when upgrading to Python 3.9
-            question_patches.append(patch)
-            operation["path"] = operation["path"][5:]
-            if operation["op"] not in ["add", "replace"]:
-                continue
-            if not isinstance(operation["value"], MutableMapping):
-                continue
-            replace_placeholders_with_snowflakes(operation["value"])
-
-        print("QUIZ PATCHES: ", quiz_patches)
-        print("QUESTION PATCHES", question_patches)
-        q = {**quiz}
-        for operation in quiz_patches:
-            op = operation["op"]
-            if op == "add":
-                pass
-            if op == "remove":
-                pass
-            if op == "replace":
-                pass
-            if op == "move":
-                pass
-            if op == "copy":
-                pass
-            if op == "test":
-                pass
-
-
-
-
-
-        s = schemas.QuizInDB(**d)
-
-        c = db.execute(
-            text(
-                "UPDATE quizzes SET (title, owner) = (:title, :owner) WHERE id = :id RETURNING *"
-            ),
-            s.dict(),
-        )
-        quiz = c.one()
-
-        c = db.execute(
-            """
-            UPDATE answers SET () 
-            """
+        # We have to make sure that no one has edited the original while we were processing stuff here,
+        # so we filter against the entire original, not just the _id
+        return await db[self.collection].find_one_and_replace(
+            orig_quiz, new_quiz, return_document=ReturnDocument.AFTER
         )
 
 
-        db.commit()
-        return c.one_or_none()
-
-
-quiz = CRUDQuiz(models.Quizzes)
+quiz = CRUDQuiz("quizzes", QuizModel)

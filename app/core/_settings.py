@@ -24,6 +24,20 @@ class Settings(BaseSettings):
             path=f"/{values.get('POSTGRES_DB') or ''}",
         )
 
+    MONGO_HOST: str
+    MONGO_PORT: int
+    # MONGO_USER: str
+    # MONGO_PASS: str
+    MONGO_DB: str
+    MONGO_URL: Optional[str] = None
+
+    @validator("MONGO_URL")
+    def assemble_mongo_connection(cls, v, values):
+        if isinstance(v, str):
+            return v
+        # return f"mongodb://{values.get('MONGO_USER')}:{values.get('MONGO_PASS')}@{values.get('MONGO_HOST')}:{values.get('MONGO_PORT')}/{values.get('MONGO_DB')}"
+        return f"mongodb://{values.get('MONGO_HOST')}:{values.get('MONGO_PORT')}/{values.get('MONGO_DB')}"
+
     TUSKY_IDENTITY_SERVICE_SHARED_SECRET: str
     TUSKY_IDENTITY_SERVICE_ALGORITHMS: List[str]
     TUSKY_IDENTITY_SERVICE_TOKEN_AUDIENCE: str
