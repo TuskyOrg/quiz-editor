@@ -1,6 +1,4 @@
 # MongoDB cares little for the differences between models and schemas 😛
-from decimal import Decimal
-from numbers import Number
 from typing import Optional, List
 
 from pydantic import BaseModel, Field
@@ -35,24 +33,11 @@ class QuizModel(_Model):
     questions: List[QuestionModel] = []
 
 
-# class _Response(BaseModel):
-#     _id: int = Field(..., alias="id")
-#
-#
-# class AnswerResponse(_Response):
-#     text: str
-#     points: Optional[Decimal]
-#
-#
-# class QuestionResponse(_Response):
-#     query: str
-#     answers: List[AnswerResponse] = []
-#
-#
-# class QuizResponse(_Response):
-#     title: str
-#     owner: tusky_snowflake.Snowflake
-#     questions: List[QuestionResponse] = []
+class RoomModel(_Model):
+    # A unique partial index ensures that two active room cannot share the same code
+    # (Logic in mongo-init.js)
+    code: str
+    is_active: bool
 
 
 #######################################################################################
