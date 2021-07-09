@@ -19,7 +19,6 @@ def get_user(username):
             c.register(username=username, password="abcd1234")
         except Exception as err:
             pass
-            # print("Probably duplicate users | ", err)
         bearer_token = c.login(username=username, password="abcd1234")
         access_token = bearer_token.access_token
         user_details = c.get_me(access_token)
@@ -42,7 +41,6 @@ def test_quiz():
     r.raise_for_status()
     quiz_post = r.json()
     assert quiz_post["title"] == "Test Quiz"
-    print(f"posted quiz:\t{r.json()}")
 
     ####################################################################################
     # Assert you can't post a quiz in someone else's name
@@ -93,7 +91,6 @@ def test_quiz():
         content=json.dumps(patch_request),
         headers=u1_auth,
     )
-    print("Request content:\t", r_patch.request.content)
     r_patch.raise_for_status()
     assert r_patch.json()["title"] == "New Title"
     assert r_patch.json()["questions"] == []
@@ -135,13 +132,7 @@ def test_quiz():
         json=patch_change_owner,
         headers=u1_auth,
     )
-    try:
-        r.raise_for_status()
-        raise ValueError(
-            "Oh no! A user gave another user a quiz without their permission!"
-        )
-    except HTTPStatusError:
-        pass
+    assert r.is_error, f"Oh no! A user gave another user a quiz without their permission! (probably), `{r.content}`"
 
     ####################################################################################
     # ASSERT PATCH MUST BE LIST
@@ -180,7 +171,6 @@ def test_quiz():
     r.raise_for_status()
 
     q = r.json()["questions"][0]
-    print(r.json())
     assert q["query"] == "q1", f"Adding a question did not work properly\n{q}"
     if "id" in q:
         raise ValueError("The question id was not reset")
@@ -206,10 +196,21 @@ def test_quiz():
         {"op": "add", "path": "/questions/-", "value": q3},
         {"op": "add", "path": "/questions/-", "value": q4},
     ]
-    r = httpx.patch(f"http://localhost:8001/editor/quiz/{quiz_get['_id']}", json=patch_request, headers=u1_auth,)
+    r = httpx.patch(f"http://localhost:8001/editor/quiz/{quiz_get['_id']}", json=patch_request, headers=u1_auth)
     r.raise_for_status()
-    print(r.json())
 
+    ####################################################################################
+    # Assert delete fails without auth
+    r = httpx.delete(f"http://localhost:8001/editor/quiz", params={"id": quiz_get['_id']})
+    assert r.status_code == 403, f"Something went wrong during deletion. `{r.content}`"
+
+    ####################################################################################
+    # Assert delete works
+    r = httpx.delete(f"http://localhost:8001/editor/quiz/", headers=u1_auth, params={"id": quiz_get['_id']})
+    r.raise_for_status()
+    r = httpx.get(f"http://localhost:8001/editor/quiz/", headers=u1_auth, params={"id": quiz_get['_id']})
+    if r.status_code != 404:
+        raise ValueError("The object wasn't deleted. ", r.content)
 
 if __name__ == "__main__":
     test_quiz()

@@ -61,3 +61,19 @@ async def patch_quiz(
     if user_snowflake != quiz["owner"]:
         raise PermissionError403
     return await crud.quiz.patch(db, id_=id, json_patch_request=json_patch_request)
+
+
+@router.delete("/quiz")
+async def delete_quiz(
+    id: SNOWFLAKE,
+    db=Depends(deps.get_db),
+    user_token_payload: TokenPayload = Depends(deps.verify_user_token),
+):
+    user_snowflake = user_token_payload.sub
+    quiz = await crud.quiz.get(db, id_=id)
+    if quiz is None:
+        raise NotFoundError404
+    if quiz["owner"] != user_snowflake:
+        raise PermissionError403
+    await crud.quiz.delete(db, id_=id)
+    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
