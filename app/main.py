@@ -27,9 +27,23 @@ def use_route_names_as_operation_ids(app: fastapi.FastAPI) -> None:
     Should be called only after all routes have been added.
     """
     # https://fastapi.tiangolo.com/advanced/path-operation-advanced-configuration/#openapi-operationid
+    # The logic here is simple; most of this function is error handling
+
+    route_names = set()
+    route_count = 0
+
     for route in app.routes:
         if isinstance(route, fastapi.routing.APIRoute):
-            route.operation_id = route.name
+            route.operation_id = route.name  # This line is the actual logic
+
+            route_names.add(route.name)
+            route_count += 1
+            if len(route_names) != route_count:
+                raise ValueError(
+                    f"Each api endpoint must have a unique name. "
+                    f"{route.name} is used as the name of multiple endpoints. "
+                    f"Change the endpoint's name to fix this error."
+                )
 
 
 use_route_names_as_operation_ids(app)
