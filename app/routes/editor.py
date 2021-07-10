@@ -33,7 +33,6 @@ async def get_quiz(
     db=Depends(deps.get_db),
     user_token_payload: TokenPayload = Depends(deps.verify_user_token),
 ):
-    print("ENTERING THE GET ROUTE")
     user_snowflake = user_token_payload.sub
     quiz = await crud.quiz.get(db, id_=id)
     if quiz is None:
@@ -50,9 +49,6 @@ async def patch_quiz(
     db=Depends(deps.get_db),
     user_token_payload: TokenPayload = Depends(deps.verify_user_token),
 ):
-    # I have had a lot of trouble trying to type these patch requests that I decided to do it manually
-    if not isinstance(json_patch_request, list):
-        raise ValueError("A jsonpatch request must be a list")
     print("JSON_PATCH_REQUEST:\t", json_patch_request)
     user_snowflake = user_token_payload.sub
     quiz = await crud.quiz.get(db, id_=id)
