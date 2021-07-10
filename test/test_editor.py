@@ -4,33 +4,12 @@
 import json
 
 import httpx
-import tusky_users
 from httpx import HTTPStatusError
 
-
-BASE_URL = "http://localhost:8001"
-EDITOR = BASE_URL + "/editor"
+from common import u1, u1_auth, u2, u2_auth
 
 
-def get_user(username):
-    with tusky_users.Client() as c:
-        try:
-            # Todo: Lol, hide test user credentials
-            c.register(username=username, password="abcd1234")
-        except Exception as err:
-            pass
-        bearer_token = c.login(username=username, password="abcd1234")
-        access_token = bearer_token.access_token
-        user_details = c.get_me(access_token)
-        auth_headers = {"Authorization": f"Bearer {access_token}"}
-        return user_details, auth_headers
-
-
-u1, u1_auth = get_user("u1")
-u2, u2_auth = get_user("u2")
-
-
-def test_quiz():
+def test_editor():
     ####################################################################################
     # Assert creating a quiz
     r = httpx.post(
@@ -138,7 +117,6 @@ def test_quiz():
     # ASSERT PATCH MUST BE LIST
     question = {"query": "q1", "answers": [{"text": "q1a1"}, {"text": "q1a2", "points": 1}]}
 
-
     patch_request = {
         "op": "add",
         "path": "/questions/0",
@@ -212,6 +190,7 @@ def test_quiz():
     if r.status_code != 404:
         raise ValueError("The object wasn't deleted. ", r.content)
 
+
 if __name__ == "__main__":
-    test_quiz()
+    test_editor()
 # fmt: on
