@@ -14,7 +14,7 @@ from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 from pymongo import ReturnDocument
 
-from app.models import QuizModel, RoomModel
+from app.models import QuizModel
 
 SNOWFLAKE = int
 
@@ -35,27 +35,28 @@ class _CRUDBase(Generic[ModelType], metaclass=abc.ABCMeta):
     async def get(self, db: AsyncIOMotorClient, *, id_: SNOWFLAKE) -> Optional[Dict]:
         return await db[self.collection].find_one({"_id": id_})
 
-    async def patch(self, db, *, id_: SNOWFLAKE, json_patch_request):
+    async def patch(self, db, *, original: Dict, json_patch_request):
         # Todo: this whole process smells
 
-        # I have had a lot of trouble trying to type these patch requests that I decided to do it manually
+        # I have had a lot of trouble trying to type these patch requests that I
+        # decided to do it manually
         if not isinstance(json_patch_request, list):
             raise ValueError("A jsonpatch request must be a list")
 
-        orig_quiz = await db[self.collection].find_one({"_id": id_})
         # Some fields are not allowed to be changed; make sure that they aren't accessed
         patches = jsonpatch.JsonPatch(json_patch_request)
         self._ensure_fields_are_not_blacklisted(patches)
 
-        patched_quiz = patches.apply(orig_quiz, in_place=False)
+        patched_obj = patches.apply(original, in_place=False)
         # Replace any "ids" with "_ids" (Snowflakes)
-        quiz_model = QuizModel(**patched_quiz)
+        quiz_model = self.model(**patched_obj)
         new_quiz = quiz_model.dict(by_alias=True)
 
         # We have to make sure that no one has edited the original while we were processing stuff here,
         # so we filter against the entire original, not just the _id
+        # Todo: Error message/try-again
         return await db[self.collection].find_one_and_replace(
-            orig_quiz, new_quiz, return_document=ReturnDocument.AFTER
+            original, new_quiz, return_document=ReturnDocument.AFTER
         )
 
     # Todo: blacklisted isn't a good description. Find a better word
@@ -89,11 +90,4 @@ class CRUDQuiz(_CRUDBase[QuizModel]):
         return "owner", "id", "_id"
 
 
-class CRUDRoom(_CRUDBase[RoomModel]):
-    @property
-    def blacklisted_paths(self) -> Sequence[Optional[str]]:
-        return "_id", "id", "code"
-
-
 quiz = CRUDQuiz("quizzes", QuizModel)
-room = CRUDRoom("rooms", RoomModel)

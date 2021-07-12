@@ -1,6 +1,6 @@
-from typing import Dict, List, Any
+from typing import Any
 
-from fastapi import APIRouter, Body, Depends, Request, status
+from fastapi import APIRouter, Body, Depends,  status
 from fastapi.responses import JSONResponse
 
 from app import crud, deps
@@ -9,10 +9,10 @@ from app.exceptions import PermissionError403, NotFoundError404
 
 SNOWFLAKE = int
 
-router = APIRouter()
+editor_router = APIRouter(prefix="/editor", tags=["quiz"])
 
 
-@router.post("/quiz")
+@editor_router.post("/quiz")
 async def create_quiz(
     obj_in: QuizModel,
     db=Depends(deps.get_db),
@@ -27,7 +27,7 @@ async def create_quiz(
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=quiz)
 
 
-@router.get("/quiz", response_model=QuizModel)
+@editor_router.get("/quiz", response_model=QuizModel)
 async def get_quiz(
     id: SNOWFLAKE,
     db=Depends(deps.get_db),
@@ -42,7 +42,7 @@ async def get_quiz(
     return QuizModel(**quiz)
 
 
-@router.patch("/quiz/{id}")
+@editor_router.patch("/quiz/{id}")
 async def patch_quiz(
     id: SNOWFLAKE,
     json_patch_request: Any = Body(...),
@@ -56,10 +56,13 @@ async def patch_quiz(
         raise NotFoundError404
     if user_snowflake != quiz["owner"]:
         raise PermissionError403
-    return await crud.quiz.patch(db, id_=id, json_patch_request=json_patch_request)
+    original_quiz = await crud.quiz.get(db, id)
+    return await crud.quiz.patch(
+        db, original=original_quiz, json_patch_request=json_patch_request
+    )
 
 
-@router.delete("/quiz")
+@editor_router.delete("/quiz")
 async def delete_quiz(
     id: SNOWFLAKE,
     db=Depends(deps.get_db),

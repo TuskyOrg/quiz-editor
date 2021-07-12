@@ -6,14 +6,37 @@ import json
 import httpx
 from httpx import HTTPStatusError
 
-from common import u1, u1_auth, u2, u2_auth
+import tusky_users
+
+
+editor = "http://localhost:8001/editor"
+
+
+
+def get_user(username):
+    with tusky_users.Client() as c:
+        try:
+            # Todo: Lol, hide test user credentials
+            c.register(username=username, password="abcd1234")
+        except Exception as err:
+            pass
+        bearer_token = c.login(username=username, password="abcd1234")
+        access_token = bearer_token.access_token
+        user_details = c.get_me(access_token)
+        auth_headers = {"Authorization": f"Bearer {access_token}"}
+        return user_details, auth_headers
+
+
+u1, u1_auth = get_user("u1")
+u2, u2_auth = get_user("u2")
+
 
 
 def test_editor():
     ####################################################################################
     # Assert creating a quiz
     r = httpx.post(
-        "http://localhost:8001/editor/quiz",
+        editor + "/quiz",
         headers=u1_auth,
         json={"owner": u1.id, "title": "Test Quiz"},
     )
@@ -24,7 +47,7 @@ def test_editor():
     ####################################################################################
     # Assert you can't post a quiz in someone else's name
     r = httpx.post(
-        "http://localhost:8001/editor/quiz",
+        editor + "/quiz",
         headers=u2_auth,
         json={"owner": u1.id, "title": "Test Quiz"},
     )
@@ -38,7 +61,7 @@ def test_editor():
 
     # Assert you need auth to post a quiz at all
     r = httpx.post(
-        "http://localhost:8001/editor/quiz", json={"owner": u1.id, "title": "Test Quiz"}
+        editor + "quiz", json={"owner": u1.id, "title": "Test Quiz"}
     )
     try:
         r.raise_for_status()
@@ -51,7 +74,7 @@ def test_editor():
     ####################################################################################
     # Assert getting said quiz
     r = httpx.get(
-        f"http://localhost:8001/editor/quiz/",
+        editor + "/quiz",
         params={"id": quiz_post["_id"]},
         headers=u1_auth,
     )
@@ -66,7 +89,7 @@ def test_editor():
         {"op": "replace", "path": "/title", "value": "New Title"}
     ]
     r_patch = httpx.patch(
-        f"http://localhost:8001/editor/quiz/{quiz_get['_id']}",
+        editor + "/quiz/" + {quiz_get['_id']},
         content=json.dumps(patch_request),
         headers=u1_auth,
     )
@@ -77,7 +100,7 @@ def test_editor():
     ####################################################################################
     # Assert the quiz was ACTUALLY modified
     r_get = httpx.get(
-        f"http://localhost:8001/editor/quiz/",
+        editor + "/quiz",
         params={"id": quiz_post["_id"]},
         headers=u1_auth,
     )
@@ -93,7 +116,7 @@ def test_editor():
         {"op": "replace", "path": "/id", "value": u2.id + 1}
     ]
     r = httpx.patch(
-        f"http://localhost:8001/editor/quiz/{quiz_get['_id']}",
+        editor + "/quiz/" + quiz_get['_id'],
         json=patch_request,
         headers=u1_auth,
     )
@@ -107,7 +130,7 @@ def test_editor():
     # Assert you can't give the quiz to someone else (this will be changed later, hopefully)
     patch_change_owner = [{"op": "replace", "path": "/owner", "value": u2.id}]
     r = httpx.patch(
-        f"http://localhost:8001/editor/quiz/{quiz_get['_id']}",
+        editor + "/quiz/" + quiz_get['_id'],
         json=patch_change_owner,
         headers=u1_auth,
     )
@@ -124,7 +147,7 @@ def test_editor():
     }
 
     r = httpx.patch(
-        f"http://localhost:8001/editor/quiz/{quiz_get['_id']}",
+        editor + "/quiz/" + quiz_get['_id'],
         content=json.dumps(patch_request),
         headers=u1_auth,
     )
@@ -142,7 +165,7 @@ def test_editor():
         "value": question,
     }]
     r = httpx.patch(
-        f"http://localhost:8001/editor/quiz/{quiz_get['_id']}",
+        editor + "/quiz/" + quiz_get['_id'],
         content=json.dumps(patch_request),
         headers=u1_auth,
     )
@@ -174,19 +197,19 @@ def test_editor():
         {"op": "add", "path": "/questions/-", "value": q3},
         {"op": "add", "path": "/questions/-", "value": q4},
     ]
-    r = httpx.patch(f"http://localhost:8001/editor/quiz/{quiz_get['_id']}", json=patch_request, headers=u1_auth)
+    r = httpx.patch(editor + "/quiz/" + quiz_get['_id'], json=patch_request, headers=u1_auth)
     r.raise_for_status()
 
     ####################################################################################
     # Assert delete fails without auth
-    r = httpx.delete(f"http://localhost:8001/editor/quiz", params={"id": quiz_get['_id']})
+    r = httpx.delete(editor + "/quiz", params={"id": quiz_get['_id']})
     assert r.status_code == 403, f"Something went wrong during deletion. `{r.content}`"
 
     ####################################################################################
     # Assert delete works
-    r = httpx.delete(f"http://localhost:8001/editor/quiz/", headers=u1_auth, params={"id": quiz_get['_id']})
+    r = httpx.delete(editor + "/quiz", headers=u1_auth, params={"id": quiz_get['_id']})
     r.raise_for_status()
-    r = httpx.get(f"http://localhost:8001/editor/quiz/", headers=u1_auth, params={"id": quiz_get['_id']})
+    r = httpx.get(editor + "/quiz", headers=u1_auth, params={"id": quiz_get['_id']})
     if r.status_code != 404:
         raise ValueError("The object wasn't deleted. ", r.content)
 

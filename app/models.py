@@ -1,5 +1,5 @@
 # MongoDB cares little for the differences between models and schemas 😛
-from typing import Optional, List
+from typing import Optional, List, Union
 
 from pydantic import BaseModel, Field
 
@@ -31,13 +31,6 @@ class QuizModel(_Model):
     title: str
     owner: tusky_snowflake.Snowflake
     questions: List[QuestionModel] = []
-
-
-class RoomModel(_Model):
-    # A unique partial index ensures that two active room cannot share the same code
-    # (Logic in mongo-init.js)
-    code: str
-    is_active: bool
 
 
 #######################################################################################

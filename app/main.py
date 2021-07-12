@@ -3,7 +3,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 from app import database
 from app.core import settings
-from app.routes import router
+from app.routes import editor_router as router
 
 # Todo: Getting data from a cdn is whack; we should host it ourselves
 # Custom documentation settings: https://github.com/tiangolo/fastapi/issues/2581
