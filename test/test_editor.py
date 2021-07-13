@@ -89,7 +89,7 @@ def test_editor():
         {"op": "replace", "path": "/title", "value": "New Title"}
     ]
     r_patch = httpx.patch(
-        editor + "/quiz/" + {quiz_get['_id']},
+        editor + "/quiz/" + str(quiz_get['_id']),
         content=json.dumps(patch_request),
         headers=u1_auth,
     )
@@ -116,7 +116,7 @@ def test_editor():
         {"op": "replace", "path": "/id", "value": u2.id + 1}
     ]
     r = httpx.patch(
-        editor + "/quiz/" + quiz_get['_id'],
+        editor + "/quiz/" + str(quiz_get['_id']),
         json=patch_request,
         headers=u1_auth,
     )
@@ -130,7 +130,7 @@ def test_editor():
     # Assert you can't give the quiz to someone else (this will be changed later, hopefully)
     patch_change_owner = [{"op": "replace", "path": "/owner", "value": u2.id}]
     r = httpx.patch(
-        editor + "/quiz/" + quiz_get['_id'],
+        editor + "/quiz/" + str(quiz_get['_id']),
         json=patch_change_owner,
         headers=u1_auth,
     )
@@ -147,7 +147,7 @@ def test_editor():
     }
 
     r = httpx.patch(
-        editor + "/quiz/" + quiz_get['_id'],
+        editor + "/quiz/" + str(quiz_get['_id']),
         content=json.dumps(patch_request),
         headers=u1_auth,
     )
@@ -165,7 +165,7 @@ def test_editor():
         "value": question,
     }]
     r = httpx.patch(
-        editor + "/quiz/" + quiz_get['_id'],
+        editor + "/quiz/" + str(quiz_get['_id']),
         content=json.dumps(patch_request),
         headers=u1_auth,
     )
@@ -197,7 +197,7 @@ def test_editor():
         {"op": "add", "path": "/questions/-", "value": q3},
         {"op": "add", "path": "/questions/-", "value": q4},
     ]
-    r = httpx.patch(editor + "/quiz/" + quiz_get['_id'], json=patch_request, headers=u1_auth)
+    r = httpx.patch(editor + "/quiz/" + str(quiz_get['_id']), json=patch_request, headers=u1_auth)
     r.raise_for_status()
 
     ####################################################################################

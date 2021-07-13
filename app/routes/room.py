@@ -8,10 +8,10 @@ from app import crud, deps
 from app.exceptions import PermissionError403
 from app.models import RoomModel, TokenPayload, SubmitedAnswerModel
 
-router = APIRouter()
+room_router = APIRouter()
 
 
-@router.post("/management/create")
+@room_router.post("/management/create")
 async def create_room(
     obj_in: RoomModel,
     db=Depends(deps.get_db),
@@ -23,7 +23,7 @@ async def create_room(
     return await crud.room.create(db, obj_in=obj_in)
 
 
-@router.post("/management/close")
+@room_router.post("/management/close")
 async def close_room(
     room_id: tusky_snowflake.Snowflake,
     db = Depends(deps.get_db),
@@ -36,7 +36,7 @@ async def close_room(
     return await crud.room.patch(db, id_=room_id, json_patch_request=[{"op": "replace", "path": "/is_active", "value": False}])
 
 
-@router.get("/student")
+@room_router.get("/student")
 async def join_room(
     room_code,
     db=Depends(deps.get_db),
@@ -60,7 +60,7 @@ async def join_room(
     return room
 
 
-@router.post("/submit_answers")
+@room_router.post("/submit_answers")
 async def submit_answers(
     obj_in: SubmitedAnswerModel,
     db=Depends(deps.get_db),

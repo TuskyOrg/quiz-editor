@@ -9,7 +9,7 @@ from app.exceptions import PermissionError403, NotFoundError404
 
 SNOWFLAKE = int
 
-editor_router = APIRouter(prefix="/editor", tags=["quiz"])
+editor_router = APIRouter()
 
 
 @editor_router.post("/quiz")
@@ -56,7 +56,7 @@ async def patch_quiz(
         raise NotFoundError404
     if user_snowflake != quiz["owner"]:
         raise PermissionError403
-    original_quiz = await crud.quiz.get(db, id)
+    original_quiz = await crud.quiz.get(db, id_=id)
     return await crud.quiz.patch(
         db, original=original_quiz, json_patch_request=json_patch_request
     )
