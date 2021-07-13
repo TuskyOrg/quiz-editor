@@ -1,3 +1,4 @@
+from typing import Optional, List, Union
 # MongoDB cares little for the differences between models and schemas 😛
 from typing import Optional, List, Union
 
@@ -31,6 +32,23 @@ class QuizModel(_Model):
     title: str
     owner: tusky_snowflake.Snowflake
     questions: List[QuestionModel] = []
+
+
+class SubmitedAnswerModel(_Model):
+    student_id: tusky_snowflake.Snowflake
+    room_id: tusky_snowflake.Snowflake
+    question_id: tusky_snowflake.Snowflake
+    answer: Union[tusky_snowflake.Snowflake, str]
+
+
+class RoomModel(_Model):
+    # A unique partial index ensures that two active room cannot share the same code
+    # (Logic in mongo-init.js). Unfortunately, it doesn't work yet.
+    owner_id: tusky_snowflake.Snowflake
+    quiz_id: tusky_snowflake.Snowflake
+    code: str
+    is_active: bool
+    submitted_answers: List[SubmitedAnswerModel]
 
 
 #######################################################################################

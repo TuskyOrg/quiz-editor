@@ -14,7 +14,7 @@ from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 from pymongo import ReturnDocument
 
-from app.models import QuizModel
+from app.models import QuizModel, RoomModel
 
 SNOWFLAKE = int
 
@@ -43,6 +43,7 @@ class _CRUDBase(Generic[ModelType], metaclass=abc.ABCMeta):
         if not isinstance(json_patch_request, list):
             raise ValueError("A jsonpatch request must be a list")
 
+        orig_quiz = await db[self.collection].find_one({"_id": id_})
         # Some fields are not allowed to be changed; make sure that they aren't accessed
         patches = jsonpatch.JsonPatch(json_patch_request)
         self._ensure_fields_are_not_blacklisted(patches)
@@ -90,4 +91,14 @@ class CRUDQuiz(_CRUDBase[QuizModel]):
         return "owner", "id", "_id"
 
 
+class CRUDRoom(_CRUDBase[RoomModel]):
+    @property
+    def blacklisted_paths(self) -> Sequence[Optional[str]]:
+        return "_id", "id", "code", "owner_id", "quiz_id"
+
+    def get_by_code(self, db: AsyncIOMotorClient, *, code: str) -> Optional[Dict]:
+        return await db[self.collection].find_one({"code": code, "is_active": True})
+
+
 quiz = CRUDQuiz("quizzes", QuizModel)
+room = CRUDRoom("rooms", RoomModel)
