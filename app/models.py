@@ -1,5 +1,4 @@
-# MongoDB cares little for the differences between models and schemas 😛
-from typing import Optional, List
+from typing import Optional, List, Union
 
 from pydantic import BaseModel, Field
 
@@ -17,14 +16,17 @@ class _Model(BaseModel):
         allow_population_by_field_name = True
 
 
-class AnswerModel(_Model):
+class _AnswerBase(_Model):
     text: str
+
+
+class AnswerModel(_AnswerBase):
     points: float = Field(0)
 
 
 class QuestionModel(_Model):
     query: str
-    answers: List[AnswerModel] = []
+    answers: List[_AnswerBase] = []
 
 
 class QuizModel(_Model):
@@ -33,11 +35,21 @@ class QuizModel(_Model):
     questions: List[QuestionModel] = []
 
 
+class SubmitedAnswerModel(_Model):
+    student_id: tusky_snowflake.Snowflake
+    room_id: tusky_snowflake.Snowflake
+    question_id: tusky_snowflake.Snowflake
+    answer: Union[tusky_snowflake.Snowflake, str]
+
+
 class RoomModel(_Model):
     # A unique partial index ensures that two active room cannot share the same code
-    # (Logic in mongo-init.js)
+    # (Logic in mongo-init.js). Unfortunately, it doesn't work yet.
+    owner_id: tusky_snowflake.Snowflake
+    quiz_id: tusky_snowflake.Snowflake
     code: str
     is_active: bool
+    submitted_answers: List[SubmitedAnswerModel]
 
 
 #######################################################################################

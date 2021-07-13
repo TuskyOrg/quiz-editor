@@ -92,7 +92,10 @@ class CRUDQuiz(_CRUDBase[QuizModel]):
 class CRUDRoom(_CRUDBase[RoomModel]):
     @property
     def blacklisted_paths(self) -> Sequence[Optional[str]]:
-        return "_id", "id", "code"
+        return "_id", "id", "code", "owner_id", "quiz_id"
+
+    def get_by_code(self, db: AsyncIOMotorClient, *, code: str) -> Optional[Dict]:
+        return await db[self.collection].find_one({"code": code, "is_active": True})
 
 
 quiz = CRUDQuiz("quizzes", QuizModel)
