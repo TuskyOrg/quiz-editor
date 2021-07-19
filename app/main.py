@@ -1,4 +1,5 @@
 import fastapi
+from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from app import database
@@ -11,6 +12,18 @@ app = fastapi.FastAPI(title="Tusky Quiz Service")
 
 app.add_event_handler("startup", database.connect_to_mongo)
 app.add_event_handler("shutdown", database.close_mongo_connection)
+
+origins = [
+    "http://tusky.org",
+    "http://localhost:5000"
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 app.include_router(router)
