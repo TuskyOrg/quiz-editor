@@ -1,6 +1,4 @@
 from typing import Optional, List, Union
-# MongoDB cares little for the differences between models and schemas 😛
-from typing import Optional, List, Union
 
 from pydantic import BaseModel, Field
 

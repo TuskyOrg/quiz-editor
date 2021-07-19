@@ -76,3 +76,13 @@ async def delete_quiz(
         raise PermissionError403
     await crud.quiz.delete(db, id_=id)
     return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@editor_router.get("/quiz-previews")
+async def get_quiz_previews(
+    db=Depends(deps.get_db),
+    user_token_payload: TokenPayload = Depends(deps.verify_user_token),
+):
+    user_snowflake = user_token_payload.sub
+    # Todo: Only return schema
+    return await crud.quiz.get_previews_by_user(db, user_id=user_snowflake)

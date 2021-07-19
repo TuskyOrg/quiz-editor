@@ -89,6 +89,9 @@ class CRUDQuiz(_CRUDBase[QuizModel]):
     def blacklisted_paths(self) -> Sequence[Optional[str]]:
         return "owner", "id", "_id"
 
+    async def get_previews_by_user(self, db: AsyncIOMotorClient, *, user_id: SNOWFLAKE):
+        return await db[self.collection].find({"owner_id": user_id})
+
 
 class CRUDRoom(_CRUDBase[RoomModel]):
     @property
