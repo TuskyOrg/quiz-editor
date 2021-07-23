@@ -1,3 +1,9 @@
+""" Module for models & schemas.
+
+A model is a representation of a database object.
+
+A schema is a object returned by the API
+"""
 from typing import Optional, List, Union
 
 from pydantic import BaseModel, Field
@@ -16,6 +22,14 @@ class _Model(BaseModel):
         allow_population_by_field_name = True
 
 
+class _Schema(BaseModel):
+    id: tusky_snowflake.Snowflake = Field(..., alias="_id")
+
+    class Config:
+        allow_population_by_field_name = True
+
+
+#######################################################################################
 class AnswerModel(_Model):
     text: str
     points: float = Field(0)
@@ -32,6 +46,45 @@ class QuizModel(_Model):
     questions: List[QuestionModel] = []
 
 
+################################################################
+class AnswerPrivateSchema(_Schema):
+    text: str
+    points: float = Field(0)
+
+
+class QuestionPrivateSchema(_Schema):
+    query: str
+    answers: List[AnswerPrivateSchema] = []
+
+
+class QuizPrivateSchema(_Schema):
+    title: str
+    owner: tusky_snowflake.Snowflake
+    questions: List[QuestionPrivateSchema] = []
+
+
+################################################################
+class QuizTitle(_Schema):
+    title: str
+
+
+################################################################
+class AnswerPublicSchema(_Schema):
+    text: str
+
+
+class QuestionPublicSchema(_Schema):
+    query: str
+    answers: List[AnswerPublicSchema] = []
+
+
+class QuizPublicSchema(_Schema):
+    title: str
+    owner: tusky_snowflake.Snowflake
+    questions: List[QuestionPublicSchema] = []
+
+
+################################################################
 class SubmitedAnswerModel(_Model):
     student_id: tusky_snowflake.Snowflake
     room_id: tusky_snowflake.Snowflake
@@ -39,6 +92,7 @@ class SubmitedAnswerModel(_Model):
     answer: Union[tusky_snowflake.Snowflake, str]
 
 
+#######################################################################################
 class RoomModel(_Model):
     # A unique partial index ensures that two active room cannot share the same code
     # (Logic in mongo-init.js). Unfortunately, it doesn't work yet.

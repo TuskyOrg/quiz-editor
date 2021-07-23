@@ -4,7 +4,7 @@ from fastapi import APIRouter, Body, Depends,  status
 from fastapi.responses import JSONResponse
 
 from app import crud, deps
-from app.models import QuizModel, TokenPayload
+from app.models import QuizModel, QuizPrivateSchema, TokenPayload, QuizTitle
 from app.exceptions import PermissionError403, NotFoundError404
 
 SNOWFLAKE = int
@@ -12,7 +12,7 @@ SNOWFLAKE = int
 editor_router = APIRouter()
 
 
-@editor_router.post("/quiz")
+@editor_router.post("/quiz", response_model=QuizPrivateSchema)
 async def create_quiz(
     obj_in: QuizModel,
     db=Depends(deps.get_db),
@@ -27,7 +27,7 @@ async def create_quiz(
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=quiz)
 
 
-@editor_router.get("/quiz", response_model=QuizModel)
+@editor_router.get("/quiz", response_model=QuizPrivateSchema)
 async def get_quiz(
     id: SNOWFLAKE,
     db=Depends(deps.get_db),
@@ -39,10 +39,11 @@ async def get_quiz(
         raise NotFoundError404
     if user_snowflake != quiz["owner"]:
         raise PermissionError403
-    return QuizModel(**quiz)
+    return quiz
+    # return QuizPrivateSchema(**quiz)
 
 
-@editor_router.patch("/quiz/{id}")
+@editor_router.patch("/quiz/{id}", response_model=QuizPrivateSchema)
 async def patch_quiz(
     id: SNOWFLAKE,
     json_patch_request: Any = Body(...),
@@ -78,11 +79,10 @@ async def delete_quiz(
     return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@editor_router.get("/quiz-previews")
-async def get_quiz_previews(
+@editor_router.get("/quiz-titles", response_model=QuizTitle)
+async def get_quiz_titles(
     db=Depends(deps.get_db),
     user_token_payload: TokenPayload = Depends(deps.verify_user_token),
 ):
     user_snowflake = user_token_payload.sub
-    # Todo: Only return schema
-    return await crud.quiz.get_previews_by_user(db, user_id=user_snowflake)
+    return await crud.quiz.get_titles_by_user(db, user_id=user_snowflake)

@@ -36,7 +36,7 @@ async def close_room(
     return await crud.room.patch(db, id_=room_id, json_patch_request=[{"op": "replace", "path": "/is_active", "value": False}])
 
 
-@room_router.get("/student")
+@room_router.get("/student/get-room")
 async def join_room(
     room_code,
     db=Depends(deps.get_db),
@@ -60,7 +60,7 @@ async def join_room(
     return room
 
 
-@room_router.post("/submit_answers")
+@room_router.post("/student/submit_answers")
 async def submit_answers(
     obj_in: SubmitedAnswerModel,
     db=Depends(deps.get_db),
