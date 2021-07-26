@@ -13,10 +13,7 @@ app = fastapi.FastAPI(title="Tusky Quiz Service")
 app.add_event_handler("startup", database.connect_to_mongo)
 app.add_event_handler("shutdown", database.close_mongo_connection)
 
-origins = [
-    "http://tusky.org",
-    "http://localhost:5000"
-]
+origins = ["http://tusky.org", "http://localhost:5000"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
