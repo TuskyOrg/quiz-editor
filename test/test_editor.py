@@ -213,6 +213,11 @@ def test_editor():
     if r.status_code != 404:
         raise ValueError("The object wasn't deleted. ", r.content)
 
+    ####################################################################################
+    # Assert quiz titles works
+    r = httpx.get(editor + "/quiz-titles", headers=u1_auth)
+    r.raise_for_status()
+    print("We don't actually check for content here")
 
 if __name__ == "__main__":
     test_editor()

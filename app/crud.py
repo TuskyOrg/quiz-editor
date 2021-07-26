@@ -90,7 +90,11 @@ class CRUDQuiz(_CRUDBase[QuizModel]):
         return "owner", "id", "_id"
 
     async def get_titles_by_user(self, db: AsyncIOMotorClient, *, user_id: SNOWFLAKE):
-        return await db[self.collection].find({"owner_id": user_id}, {"_id": 1, "title": 1})
+        return (
+            await db[self.collection]
+            .find({"owner": user_id}, {"_id": 1, "title": 1})
+            .to_list(None)
+        )
 
 
 class CRUDRoom(_CRUDBase[RoomModel]):

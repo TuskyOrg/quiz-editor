@@ -1,6 +1,6 @@
-from typing import Any
+from typing import Any, List
 
-from fastapi import APIRouter, Body, Depends,  status
+from fastapi import APIRouter, Body, Depends, status
 from fastapi.responses import JSONResponse
 
 from app import crud, deps
@@ -79,10 +79,12 @@ async def delete_quiz(
     return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@editor_router.get("/quiz-titles", response_model=QuizTitle)
+@editor_router.get("/quiz-titles", response_model=List[QuizTitle])
 async def get_quiz_titles(
     db=Depends(deps.get_db),
     user_token_payload: TokenPayload = Depends(deps.verify_user_token),
 ):
     user_snowflake = user_token_payload.sub
-    return await crud.quiz.get_titles_by_user(db, user_id=user_snowflake)
+    x = await crud.quiz.get_titles_by_user(db, user_id=user_snowflake)
+    print("Returned objects:\t", x)
+    return x
