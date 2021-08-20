@@ -10,6 +10,7 @@ import tusky_users
 
 
 editor = "http://localhost:8001/editor"
+room = "http://localhost:8001/room"
 
 
 
@@ -61,7 +62,7 @@ def test_editor():
 
     # Assert you need auth to post a quiz at all
     r = httpx.post(
-        editor + "quiz", json={"owner": u1.id, "title": "Test Quiz"}
+        editor + "/quiz", json={"owner": u1.id, "title": "Test Quiz"}
     )
     try:
         r.raise_for_status()
@@ -213,11 +214,42 @@ def test_editor():
     if r.status_code != 404:
         raise ValueError("The object wasn't deleted. ", r.content)
 
+    # Create a new quiz to work with
+    r = httpx.post(
+        editor + "/quiz",
+        headers=u1_auth,
+        json={"owner": u1.id, "title": "Test Quiz"},
+    )
+    patch_request = [
+        {"op": "add", "path": "/questions/-", "value": q2},
+        {"op": "add", "path": "/questions/-", "value": q3},
+        {"op": "add", "path": "/questions/-", "value": q4},
+    ]
+    r = httpx.patch(editor + "/quiz/" + str(r.json()['_id']), json=patch_request, headers=u1_auth)
+    r.raise_for_status()
+    quiz = r.json()
+
     ####################################################################################
     # Assert quiz titles works
     r = httpx.get(editor + "/quiz-titles", headers=u1_auth)
     r.raise_for_status()
     print("We don't actually check for content here")
+
+    ####################################################################################
+    # Room and stuff
+    room_model = {"owner_id": u1.id, "quiz_id": quiz["_id"]}
+    r = httpx.post(room + "/management/create", headers=u1_auth, json=room_model)
+    r.raise_for_status()
+    room_ = r.json()
+
+    ####################################################################################
+    # Room by code
+    r = httpx.get(room + "/student/get-room", headers=u2_auth, params={"room_code": room_["code"]})
+    r.raise_for_status()
+    print(r.json())
+    print("\n\n THIS CURRENTLY FAILS. IT GIVES THE ANSWERS TO THE STUDENTS.")
+
+
 
 if __name__ == "__main__":
     test_editor()

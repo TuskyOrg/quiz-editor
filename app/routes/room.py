@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 
 from app import crud, deps
 from app.exceptions import PermissionError403
-from app.models import RoomModel, TokenPayload, SubmitedAnswerModel
+from app.models import TokenPayload, SubmitedAnswerModel, RoomModel
 
 room_router = APIRouter()
 
@@ -20,7 +20,7 @@ async def create_room(
     user_snowflake = user_token_payload.sub
     if obj_in.owner_id != user_snowflake:
         raise PermissionError403
-    return await crud.room.create(db, obj_in=obj_in)
+    return await crud.room.create(db, obj_in=RoomModel(**obj_in.dict()))
 
 
 @room_router.post("/management/close")
@@ -47,7 +47,7 @@ async def join_room(
     user_token_payload: TokenPayload = Depends(deps.verify_user_token),
 ):
     room = await crud.room.get_by_code(db, code=room_code)
-    quiz = await crud.quiz.get(db, id=room["quiz_id"])
+    quiz = await crud.quiz.get(db, id_=room["quiz_id"])
 
     # Todo: this is terrible code and needs refactored
     def get_rid_of_answers(m: MutableMapping):

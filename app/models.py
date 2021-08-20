@@ -4,6 +4,8 @@ A model is a representation of a database object.
 
 A schema is a object returned by the API
 """
+import random
+import string
 from typing import Optional, List, Union
 
 from pydantic import BaseModel, Field
@@ -30,6 +32,7 @@ class _Schema(BaseModel):
 
 
 #######################################################################################
+
 class AnswerModel(_Model):
     text: str
     points: float = Field(0)
@@ -47,6 +50,7 @@ class QuizModel(_Model):
 
 
 ################################################################
+
 class AnswerPrivateSchema(_Schema):
     text: str
     points: float = Field(0)
@@ -64,11 +68,13 @@ class QuizPrivateSchema(_Schema):
 
 
 ################################################################
+
 class QuizTitle(_Schema):
     title: str
 
 
 ################################################################
+
 class AnswerPublicSchema(_Schema):
     text: str
 
@@ -85,6 +91,7 @@ class QuizPublicSchema(_Schema):
 
 
 ################################################################
+
 class SubmitedAnswerModel(_Model):
     student_id: tusky_snowflake.Snowflake
     room_id: tusky_snowflake.Snowflake
@@ -93,14 +100,26 @@ class SubmitedAnswerModel(_Model):
 
 
 #######################################################################################
+
+def _generate_code() -> str:
+    return "".join([random.choice(string.ascii_uppercase) for _ in range(5)])
+
+
 class RoomModel(_Model):
     # A unique partial index ensures that two active room cannot share the same code
     # (Logic in mongo-init.js). Unfortunately, it doesn't work yet.
     owner_id: tusky_snowflake.Snowflake
     quiz_id: tusky_snowflake.Snowflake
+    code: str = Field(default_factory=_generate_code)
+    is_active: bool = True
+    submitted_answers: List[SubmitedAnswerModel] = []
+
+
+class RoomPublicSchema(_Schema):
+    owner_id: tusky_snowflake.Snowflake
+    quiz_id: tusky_snowflake.Snowflake
     code: str
     is_active: bool
-    submitted_answers: List[SubmitedAnswerModel]
 
 
 #######################################################################################
